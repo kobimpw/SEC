@@ -1,3 +1,5 @@
+'działa !!!!!!!'
+
 import requests
 import pandas as pd 
 from openpyxl import workbook 
@@ -16,7 +18,7 @@ def sec():
         import pandas as pd 
         from openpyxl import workbook
 
-        headers = {'user-Agent':'podaj swój e-mail'}
+        headers = {'user-Agent':'przyklad@gmail.com'}
 
         # tu się podłączyłem do danych 
         company_tickers = requests.get("https://www.sec.gov/files/company_tickers.json",headers = headers) 
@@ -29,6 +31,8 @@ def sec():
         
         # wskazujemy tickery, które nas interesują
         tickery = ['AAPL','NVDA', 'MSFT','AMZN', "GOOGL",'META', 'TSLA']
+        'celowy błąd aby sprawdzić czy działa'
+        # tickery = ['AAPL','NVDA', 'MSFT','AMZN', "GOOGL",'META', 'TSLA','maslo','kefir']
         
         # zwróci numer wybranych tickera
         numer_ticker = CompanyData.index[CompanyData['ticker'].isin(tickery)].to_list() 
@@ -41,6 +45,11 @@ def sec():
 
         # zwróci listę wybranych tickerów
         ticker_wybrany = CompanyData.iloc[numer_ticker].ticker
+
+
+
+        # print(sorted(ticker_wybrany.to_list()))
+        # print(sorted(tickery))
 
         #test czy tickery zostały pobrane poprawnie
         if sorted(tickery) == sorted(ticker_wybrany.to_list()):
@@ -61,7 +70,7 @@ def sec():
     except:
         print(f" ERROR: podłączenie do API SEC niepowiodło się")
         return None, None, None, None   
-headers, cik_wybrane, ticker_wybrany = sec() 
+headers, cik_stary, cik_wybrane, ticker_wybrany = sec() 
 '-____________________________________________________________________________________________'
 #region : 2.przychody tu są przechowywane hasła pod, którymi mogą być przychody
 'hasła pod, którymi mogą być przychody'
@@ -177,52 +186,56 @@ kontener_zbiorowy = pierwsze_czyszczenie_danych(kontener_zbiorowy)
 ''' 5.opis funkcji'''
 baza_danych = []
 def drugie_czyszczenie_danych():
-    for tic in ticker_wybrany:
-        kontener_jednej_spolki = kontener_zbiorowy[kontener_zbiorowy['company'].isin([tic])]
-        # print(kontener_jednej_spolki)
+    try: 
+        for tic in ticker_wybrany:
+            kontener_jednej_spolki = kontener_zbiorowy[kontener_zbiorowy['company'].isin([tic])]
+            # print(kontener_jednej_spolki)
 
-        # od tego momentu dane muszą być czyszczone dla jednej spolki
-        'pomysl posortowac po okres sprawozdawczy aby roczne trafily na sama gore a nastepnie usunac duplikaty, i w kolejnym kroku posortowac po end '
-        kontener_jednej_spolki = kontener_jednej_spolki.sort_values(by='okres sprawozdawczy', ascending=False) # sortuje po okres sprawozdawczy
-        kontener_jednej_spolki = kontener_jednej_spolki.drop_duplicates(subset=['end']) # usuwa duplikaty z kolumny end
-        kontener_jednej_spolki = kontener_jednej_spolki.sort_values(by='end', ascending=True) # sortuje po end
-        kontener_jednej_spolki['dni roznicy'] = kontener_jednej_spolki['end'].shift(-1) -  kontener_jednej_spolki['end'] # tworzenie kolumny sprawdzającej dni różnicy między wynikiem 1 a wynikiem 2 
-        mask = (kontener_jednej_spolki['dni roznicy'].dt.days > 100) & (kontener_jednej_spolki['dni roznicy'].dt.days < 300) # oczyszczenie danych z raportów półrocznych. Ponownie, trafiały się wyjątki
-        kontener_jednej_spolki = kontener_jednej_spolki[~mask]#zastosowanie warunku
-        kontener_jednej_spolki['dni roznicy'] = kontener_jednej_spolki['end'].shift(-1) -  kontener_jednej_spolki['end'] # tworzy kolumne dni roznicy odejmujac w kolumnie end w1 od w2
-        # Jeśli pojawi się NaT (ostatni wiersz), wypełnij go poprzednią wartością
-        kontener_jednej_spolki['dni roznicy'] = kontener_jednej_spolki['dni roznicy'].ffill()
+            # od tego momentu dane muszą być czyszczone dla jednej spolki
+            'pomysl posortowac po okres sprawozdawczy aby roczne trafily na sama gore a nastepnie usunac duplikaty, i w kolejnym kroku posortowac po end '
+            kontener_jednej_spolki = kontener_jednej_spolki.sort_values(by='okres sprawozdawczy', ascending=False) # sortuje po okres sprawozdawczy
+            kontener_jednej_spolki = kontener_jednej_spolki.drop_duplicates(subset=['end']) # usuwa duplikaty z kolumny end
+            kontener_jednej_spolki = kontener_jednej_spolki.sort_values(by='end', ascending=True) # sortuje po end
+            kontener_jednej_spolki['dni roznicy'] = kontener_jednej_spolki['end'].shift(-1) -  kontener_jednej_spolki['end'] # tworzenie kolumny sprawdzającej dni różnicy między wynikiem 1 a wynikiem 2 
+            mask = (kontener_jednej_spolki['dni roznicy'].dt.days > 100) & (kontener_jednej_spolki['dni roznicy'].dt.days < 300) # oczyszczenie danych z raportów półrocznych. Ponownie, trafiały się wyjątki
+            kontener_jednej_spolki = kontener_jednej_spolki[~mask]#zastosowanie warunku
+            kontener_jednej_spolki['dni roznicy'] = kontener_jednej_spolki['end'].shift(-1) -  kontener_jednej_spolki['end'] # tworzy kolumne dni roznicy odejmujac w kolumnie end w1 od w2
+            # Jeśli pojawi się NaT (ostatni wiersz), wypełnij go poprzednią wartością
+            kontener_jednej_spolki['dni roznicy'] = kontener_jednej_spolki['dni roznicy'].ffill()
 
-        '''opis segmentu : obliczanie 4 kwartalu___________________________________
-        1. z rocznego sprawozdania został obliczony wynik za 4 kwartał (roku obrotowego społki)
-        2. dane zostaly posegregowane na roczne i kwartalne 
-        '''
-        kontener_jednej_spolki['okres dni'] = kontener_jednej_spolki['okres sprawozdawczy'].dt.days #konwertuje okres sprawozdawczy na liczby 
-        df_roczne = kontener_jednej_spolki[kontener_jednej_spolki['okres dni'] > 300].copy() #znajdz wiersze wieksze od >300
+            '''opis segmentu : obliczanie 4 kwartalu___________________________________
+            1. z rocznego sprawozdania został obliczony wynik za 4 kwartał (roku obrotowego społki)
+            2. dane zostaly posegregowane na roczne i kwartalne 
+            '''
+            kontener_jednej_spolki['okres dni'] = kontener_jednej_spolki['okres sprawozdawczy'].dt.days #konwertuje okres sprawozdawczy na liczby 
+            df_roczne = kontener_jednej_spolki[kontener_jednej_spolki['okres dni'] > 300].copy() #znajdz wiersze wieksze od >300
 
-        for index, row in df_roczne.iterrows():
-            #ten segment kodu sprowadza wyniki roczne do wyniku kwartalnego 
-            mask = \
-                (kontener_jednej_spolki['end'] <= row['end']) &\
-                (kontener_jednej_spolki['start'] >= row['start']) &\
-                (kontener_jednej_spolki['okres dni'] <= 300)
-            kontener_jednej_spolki.at[index, 'val'] -= kontener_jednej_spolki.loc[mask, 'val'].sum()
+            for index, row in df_roczne.iterrows():
+                #ten segment kodu sprowadza wyniki roczne do wyniku kwartalnego 
+                mask = \
+                    (kontener_jednej_spolki['end'] <= row['end']) &\
+                    (kontener_jednej_spolki['start'] >= row['start']) &\
+                    (kontener_jednej_spolki['okres dni'] <= 300)
+                kontener_jednej_spolki.at[index, 'val'] -= kontener_jednej_spolki.loc[mask, 'val'].sum()
 
-        kontener_jednej_spolki.loc[kontener_jednej_spolki['okres dni'] > 300, 'start'] = \
-            (kontener_jednej_spolki['end'] - pd.to_timedelta(kontener_jednej_spolki['dni roznicy'].dt.days - 1, unit='D')).dt.strftime('%Y-%m-%d')
-            # aktualizacja daty w kolumnie start w sprawozdaniu rocznym 
-        '__________________________________________________________________________'
+            kontener_jednej_spolki.loc[kontener_jednej_spolki['okres dni'] > 300, 'start'] = \
+                (kontener_jednej_spolki['end'] - pd.to_timedelta(kontener_jednej_spolki['dni roznicy'].dt.days - 1, unit='D')).dt.strftime('%Y-%m-%d')
+                # aktualizacja daty w kolumnie start w sprawozdaniu rocznym 
+            '__________________________________________________________________________'
 
-        kontener_jednej_spolki = kontener_jednej_spolki.drop_duplicates(subset=['start']) # usuwa duplikaty z kolumny strat. pojawiały się nieprzeczyszczone
-        'w celach testowych zostawiam linijke kodu'
-        # kontener_jednej_spolki['ostatni test'] = kontener_jednej_spolki['end'].shift(-1) -  kontener_jednej_spolki['end'] # ponownie w celu weryfikacji ciągłości 
+            kontener_jednej_spolki = kontener_jednej_spolki.drop_duplicates(subset=['start']) # usuwa duplikaty z kolumny strat. pojawiały się nieprzeczyszczone
+            'w celach testowych zostawiam linijke kodu'
+            # kontener_jednej_spolki['ostatni test'] = kontener_jednej_spolki['end'].shift(-1) -  kontener_jednej_spolki['end'] # ponownie w celu weryfikacji ciągłości 
 
-        # usuwanie kolumn
-        'accn' 'filed'
-        kolumny_do_usunięcia = ['accn','filed','form','fy','fp','dni roznicy','okres dni','frame','okres sprawozdawczy']
-        kontener_jednej_spolki = kontener_jednej_spolki.drop(columns=kolumny_do_usunięcia, errors='ignore')
-        baza_danych.append(kontener_jednej_spolki)
-print(f'\nDruga faza czyszczenia danych zakończona sukcesem\n')
+            # usuwanie kolumn
+            'accn' 'filed'
+            kolumny_do_usunięcia = ['accn','filed','form','fy','fp','dni roznicy','okres dni','frame','okres sprawozdawczy']
+            kontener_jednej_spolki = kontener_jednej_spolki.drop(columns=kolumny_do_usunięcia, errors='ignore')
+            baza_danych.append(kontener_jednej_spolki)
+        print(f'\nDruga faza czyszczenia danych zakończona sukcesem\n')
+    except:
+        print(f'ERROR: nie udało się wykonać drugiego czyszczenia danych')
+        return None
 drugie_czyszczenie_danych()
 '-___________________________________________________________________________________________'
 baza_danych = pd.concat(baza_danych, ignore_index=True)
@@ -230,49 +243,63 @@ baza_danych = pd.concat(baza_danych, ignore_index=True)
 
 bd_modyfikacja_danych = []
 def modyfikacja_danych():
-    for t in ticker_wybrany:
-        # przefiltrowanie
-        bd_md = baza_danych[baza_danych['company'].isin([t])]
-        # transpozycja
-        bd_md = bd_md.T
-        # zmiana nazwy kolumny val
-        bd_md = bd_md.rename(index={'val':'przychody'})
-        # dodanie kolumny z tickerem
-        bd_md['ticker'] = t
-        # usunięcie wiersza company
-        bd_md = bd_md.drop('company', axis=0)
-        # przeniesienie kolumny ticker na początek
-        cols = ['ticker'] + [col for  col in bd_md.columns if col != 'ticker']
-        # zastąpienie kolumny ticker
-        bd_md = bd_md[cols]
+    try:
+        for t in ticker_wybrany:
+            # przefiltrowanie
+            bd_md = baza_danych[baza_danych['company'].isin([t])]
+            # transpozycja
+            bd_md = bd_md.T
+            # zmiana nazwy kolumny val
+            bd_md = bd_md.rename(index={'val':'przychody'})
+            # dodanie kolumny z tickerem
+            bd_md['ticker'] = t
+            # usunięcie wiersza company
+            bd_md = bd_md.drop('company', axis=0)
+            # przeniesienie kolumny ticker na początek
+            cols = ['ticker'] + [col for  col in bd_md.columns if col != 'ticker']
+            # zastąpienie kolumny ticker
+            bd_md = bd_md[cols]
 
-        # Zresetuj indeks, aby 'start', 'end', 'val' były kolumnami
-        bd_md = bd_md.reset_index().rename(columns={'index': 'typ'})
+            # Zresetuj indeks, aby 'start', 'end', 'val' były kolumnami
+            bd_md = bd_md.reset_index().rename(columns={'index': 'typ'})
 
-          # Usuń godzinę z dat w wierszach 'start' i 'end'
-        for row in ['start', 'end']:
-            mask = bd_md['typ'] == row
-            bd_md.loc[mask, bd_md.columns[2:]] = (
-                bd_md.loc[mask, bd_md.columns[2:]]
-                .map(lambda x: str(x).split(' ')[0] if pd.notnull(x) else x)
-            )
+            # Usuń godzinę z dat w wierszach 'start' i 'end'
+            for row in ['start', 'end']:
+                mask = bd_md['typ'] == row
+                bd_md.loc[mask, bd_md.columns[2:]] = (
+                    bd_md.loc[mask, bd_md.columns[2:]]
+                    .map(lambda x: str(x).split(' ')[0] if pd.notnull(x) else x)
+                )
 
-        stałe = ['typ', 'ticker']
-        wszystkie_kolumny = list(bd_md.columns)
-        numery = [col for col in wszystkie_kolumny if col not in stałe]
-        if numery:
-            # Odwróć kolejność kolumn z numerami
-            nowe_kolumny = stałe + numery[::-1]
-            bd_md = bd_md[nowe_kolumny]
-            # Zmień nazwy kolumn liczbowych na 1, 2, ..., N (od lewej najnowsze)
-            nowe_numery = [str(i) for i in range(1, len(numery)+1)]
-            bd_md.columns = stałe + nowe_numery
-        
-        bd_modyfikacja_danych.append(bd_md)
-        # break # wprowadzenie break spowoduje wykonanie się kodu na jednej spółce
+            stałe = ['typ', 'ticker']
+            wszystkie_kolumny = list(bd_md.columns)
+            numery = [col for col in wszystkie_kolumny if col not in stałe]
+            if numery:
+                # Odwróć kolejność kolumn z numerami
+                nowe_kolumny = stałe + numery[::-1]
+                bd_md = bd_md[nowe_kolumny]
+                # Zmień nazwy kolumn liczbowych na 1, 2, ..., N (od lewej najnowsze)
+                nowe_numery = [str(i) for i in range(1, len(numery)+1)]
+                bd_md.columns = stałe + nowe_numery
+            
+            bd_modyfikacja_danych.append(bd_md)
+        print(f'\nModyfikacja danych zakończona sukcesem\n')
+    except:
+        print(f'ERROR: nie udało się wykonać modyfikacji danych')
+        return None
     return 
 modyfikacja_danych()
 bd_modyfikacja_danych = pd.concat(bd_modyfikacja_danych, ignore_index=True) 
+
+''''zadania na przyszłość
+
+'zmienić te cyferki, które wyświetlają się w pierwszym wierszu '
+'raport mozna namiezyc po end. accn i filed zle dopasowany, wartosci w kolumnach val sa prawidlowe, aczkolwiek podczas maglowania danymi te numery zostaly dopasowane do innych sprawozdań i z nich zostały wyprowadzone prawidlowo wartosci val'
+
+
+'''
+
+
 
 print(bd_modyfikacja_danych)
 '-___________________________________________________________________________________________'
@@ -281,11 +308,10 @@ print(bd_modyfikacja_danych)
 import pandas as pd
 
 # Nazwa i ścieżka pliku CSV
-sciezka = r"podaj sciezke dla pliku"
+sciezka = r"podaj sciezke"
 ""
 # Zapisywanie danych do pliku CSV
 bd_modyfikacja_danych.to_csv(sciezka, index=False, encoding='utf-8')
 
 print(f"Dane zostały zapisane do: {sciezka}")
 '-___________________________________________________________________________________________'
-
