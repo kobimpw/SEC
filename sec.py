@@ -29,8 +29,6 @@ def sec():
         
         # wskazujemy tickery, które nas interesują
         tickery = ['AAPL','NVDA', 'MSFT','AMZN', "GOOGL",'META', 'TSLA']
-        'celowy błąd aby sprawdzić czy działa'
-        # tickery = ['AAPL','NVDA', 'MSFT','AMZN', "GOOGL",'META', 'TSLA','maslo','kefir']
         
         # zwróci numer wybranych tickera
         numer_ticker = CompanyData.index[CompanyData['ticker'].isin(tickery)].to_list() 
@@ -308,4 +306,5 @@ bd_modyfikacja_danych.to_csv(sciezka, index=False, encoding='utf-8')
 
 print(f"Dane zostały zapisane do: {sciezka}")
 '-___________________________________________________________________________________________'
+
 
