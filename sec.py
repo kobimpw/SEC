@@ -301,15 +301,11 @@ bd_modyfikacja_danych = pd.concat(bd_modyfikacja_danych, ignore_index=True)
 
 print(bd_modyfikacja_danych)
 '-___________________________________________________________________________________________'
-# 'tworzenie pliku csv'
-# Importujemy Pandas, jeśli jeszcze nie jest zaimportowane
-import pandas as pd
 
 # Nazwa i ścieżka pliku CSV
-sciezka = r"podaj sciezke"
-""
-# Zapisywanie danych do pliku CSV
+sciezka = os.path.join(os.getcwd(), "DATA SEC.csv")
 bd_modyfikacja_danych.to_csv(sciezka, index=False, encoding='utf-8')
 
 print(f"Dane zostały zapisane do: {sciezka}")
 '-___________________________________________________________________________________________'
+
